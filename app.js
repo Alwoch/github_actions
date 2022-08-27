@@ -3,11 +3,13 @@ const express = require("express");
 const app = express();
 
 app.get("/", (req, res) => {
-  res.send("Hello there....!");
+  res.status(200).json({msg:'Hello there.....'})
 });
 
 app.get("/dashboard", (req, res) => {
-  res.send("this is the dashboard!!");
+  res.status(200).json({msg:'you are now on the dashboard!'})
 });
 
-app.listen(3000, console.log("listening on port 3000"));
+module.exports=app
+
+
