@@ -25,30 +25,28 @@ jobs:
       - run: npm i
       - run: npm test
       - run: npm run build --if-present
-on:
-  push:
-    branches: ["master"]
-  pull_request:
-    branches: ["master"]
+# on:
+#   push:
+#     branches: ["master"]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [16.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+#     strategy:
+#       matrix:
+#         node-version: [16.x]
+#         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
-    steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: akhileshns/heroku-deploy@v3.12.12
-        with:
-          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-          heroku_app_name: "githubactions-app"
-          heroku_email: "salwoch@gmail.com"
-      - run: npm i
-      - run: npm test
-      - run: npm run build --if-present
+#     steps:
+#       - uses: actions/checkout@v3
+#       - name: Use Node.js ${{ matrix.node-version }}
+#         uses: akhileshns/heroku-deploy@v3.12.12
+#         with:
+#           heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+#           heroku_app_name: "githubactions-app"
+#           heroku_email: "salwoch@gmail.com"
+#       - run: npm i
+#       - run: npm test
+#       - run: npm run build --if-present
       
