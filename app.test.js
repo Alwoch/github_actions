@@ -11,10 +11,10 @@ describe("app", () => {
       .expect((res) => {
         res.json({msg:"Hello there....."});
        })
-      .end((err, res) => {
-        if (err) return done(err);
-        return done();
-      });
+      // .end((err, res) => {
+      //   if (err) return done(err);
+      //   return done();
+      // });
   });
   // More things come here
 });
