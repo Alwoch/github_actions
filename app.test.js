@@ -8,9 +8,9 @@ describe("app", () => {
       .get("/")
       .expect("Content-Type", /json/)
       .expect(200)
-      // .expect((res) => {
-      //   res.json({msg:"Hello there....."});
-      //  })
+      .expect((res) => {
+        res.json({ msg: "Hello there....." });
+      })
       .end((err, res) => {
         if (err) return done(err);
         return done();
