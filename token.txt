@@ -1,0 +1,159 @@
+const UserModel = require('../models/users')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt');
+const nodemailer = require('nodemailer');
+
+const transporter = nodemailer.createTransport({
+    service: "Outlook",
+    auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+    },
+});
+
+async function hashPassword(password) {
+    return await bcrypt.hash(password, 10);
+}
+    
+async function validatePassword(plainPassword, hashedPassword) {
+    return await bcrypt.compare(plainPassword, hashedPassword);
+}
+
+exports.UserController = {
+    async getusers(req, res) {
+        try {
+            const response = await UserModel.find();
+            return res.json(response);
+        } catch(err){
+            throw new Error("Failed to get users");
+        }
+    },
+    async createNewUser(req, res, next) {
+        try {
+            const { firstName, email, password, role } = req.body
+
+            // Check if the email is in use
+            const existingUser = await UserModel.findOne({ email }).exec();
+            if (existingUser) {
+                return res.status(409).send({ 
+                    message: "Email is already in use."
+                });
+             }
+
+            const hashedPassword = await hashPassword(password);
+            const newUser = await new UserModel({ firstName, email, password: hashedPassword, role: role || "guest" }).save();
+            // Generate a verification token with the user's ID
+            const verificationToken = newUser.generateVerificationToken();
+            // Email the user a unique verification link
+            const url = `http://localhost:3000/verify/${verificationToken}`
+            transporter.sendMail({
+                from: process.env.EMAIL_USERNAME,
+                to: email,
+                subject: 'Verify Account',
+                html: `Click <a href = '${url}'>here</a> to confirm your email.`
+              })
+              return res.status(201).send({
+                message: `Sent a verification email to ${email}`
+              });
+            // const accessToken = jwt.sign({ userId: newUser._id }, process.env.SECRET_KEY, {
+            //     expiresIn: "1d"
+            // });
+            // newUser.accessToken = accessToken;
+            // await newUser.save();
+            // res.json({
+            //     message: 'Welcome! Sign Up successful',
+            //     data: newUser,
+            //     accessToken
+            // })
+        } catch(err){
+            console.log(err)
+            throw new Error("Failed to create user!");
+        }
+    },
+
+    async login(req,res, next){
+        try {
+            const { email, password } = req.body;
+            const user = await UserModel.findOne({ email });
+            if (!user) return next(new Error('User does not exist'));
+            const validPassword = await validatePassword(password, user.password);
+            if (!validPassword) return next(new Error('Password is not correct'))
+
+            // Check that the account has been verified
+            if(!user.verified){
+                return res.status(403).send({ 
+                    message: "Verify your Account." 
+                });
+            }
+            const accessToken = jwt.sign({ userId: user._id }, process.env.SECRET_KEY, {
+                expiresIn: "1d"
+            });
+            await UserModel.findByIdAndUpdate(user._id, { accessToken })
+            res.status(200).json({
+                message: 'Logged In Successfully!',
+                data: { email: user.email, role: user.role },
+                accessToken
+            })
+        } catch (error) {
+            console.log(error);
+            throw new Error("Failed to Login!");
+        }
+    },
+    async updateUser(req, res) {
+        try {
+            const id = req.params.id;
+            const response = await UserModel.findByIdAndUpdate({_id: id}, req.body, {new: true});
+            return res.json({
+                message: 'User updated!',
+                response
+            });
+        } catch(err){
+            throw new Error("Failed to update user!");
+        }
+    },
+    async deleteUser(req, res) {
+        try {
+            const id = req.params.id;
+            const response = await UserModel.findByIdAndDelete({_id: id});
+            return res.json({message: 'User deleted successfully'});
+        } catch(err){
+            throw new Error("Failed to delete user");
+        }
+    },
+    async verify (req, res) {
+        const id = req.params.id;
+        // Check we have an id
+        if (!id) {
+            return res.status(422).send({ 
+                 message: "Missing Token" 
+            });
+        }
+        // Step 1 -  Verify the token from the URL
+        let payload = null
+        try {
+            payload = jwt.verify(
+               id,
+               process.env.SECRET_KEY
+            );
+        } catch (err) {
+            return res.status(500).send(err);
+        }
+        try{
+            // Step 2 - Find user with matching ID
+            const user = await UserModel.findOne({ _id: payload.ID }).exec();
+            if (!user) {
+               return res.status(404).send({ 
+                  message: "User does not  exists" 
+               });
+            }
+            // Step 3 - Update user verification status to true
+            user.verified = true;
+            await user.save();
+            return res.status(200).send({
+                  message: "Account Verified"
+            });
+         } catch (err) {
+            return res.status(500).send(err);
+         }
+    }
+}
